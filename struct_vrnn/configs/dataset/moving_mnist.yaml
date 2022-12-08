@@ -1,0 +1,2 @@
+_target_: struct_vrnn.datasets.moving_mnist.MovingMNIST
+num_steps: 12

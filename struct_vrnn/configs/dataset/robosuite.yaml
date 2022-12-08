@@ -1,0 +1,9 @@
+num_steps: 12
+camera_name: agentview_shift_2
+cache_mode: low_dim
+dataset_files:
+    - /svl/u/stian/robosuite_50k_1/rendered_256.hdf5
+    - /svl/u/stian/robosuite_50k_2/rendered_256.hdf5
+    - /svl/u/stian/robosuite_50k_3/rendered_256.hdf5
+    - /svl/u/stian/robosuite_50k_4/rendered_256.hdf5
+    - /svl/u/stian/robosuite_50k_5/rendered_256.hdf5

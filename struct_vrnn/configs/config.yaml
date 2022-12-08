@@ -1,0 +1,87 @@
+defaults:
+  - dataset: moving_mnist
+  - _self_
+
+data_type: dataset
+run_name: default
+
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 3e-4
+
+hydra:
+  run:
+    dir: ./outputs/${now:%Y-%m-%d}/${run_name}_kl_${training_weights.kld_loss}
+
+batch_size: 8
+train_steps: 500000
+val_steps: 50
+train_epoch_length: 3000
+log_every: 30000
+log_images_every: 2000
+num_videos_to_log: 6
+device: cuda
+num_workers: 8
+
+training_weights:
+  reconstruction_loss: 10.0
+  kld_loss: 0.001
+  temporal_separation_loss: 0.0
+  coord_pred_loss: 1.0
+  sparsity_loss: 0.0
+
+model:
+  _target_: struct_vrnn.model.keypoint_vrnn.StructVRNN
+  temporal_separation_loss_sigma: 0.02
+  keypoint_detector:
+    _target_: struct_vrnn.model.keypoint_detector.KeypointDetector
+    num_keypoints: 10
+    #keypoint_sigma: 1.5
+    keypoint_sigma: 3.0
+    encoder:
+      _target_: struct_vrnn.model.keypoint_detector.ImageEncoder
+      num_input_channels: 5
+      input_map_size: 64
+      output_map_size: 16
+      initial_num_filters: 32
+      layers_per_scale: 2
+      use_batchnorm: False
+    appearance_encoder:
+      _target_: struct_vrnn.model.keypoint_detector.ImageEncoder
+      num_input_channels: 3
+      input_map_size: 64
+      output_map_size: 16
+      initial_num_filters: 32
+      layers_per_scale: 2
+    decoder:
+      _target_: struct_vrnn.model.keypoint_detector.ImageDecoder
+#      num_input_channels: 258
+      num_input_channels: 150
+      input_map_size: 16
+      output_map_size: 64
+      initial_num_filters: 256
+      layers_per_scale: 3
+      use_batchnorm: False
+  dynamics:
+    _target_: struct_vrnn.model.dynamics.Dynamics
+    prior:
+      _target_: struct_vrnn.model.lstm.MultiGaussianLSTM
+      input_size: 30
+#      input_size: 192
+      output_size: 16
+      hidden_size: 512
+      num_layers: 2
+    posterior:
+      _target_: struct_vrnn.model.lstm.MultiGaussianLSTM
+      input_size: 30
+#      input_size: 192
+      output_size: 16
+      hidden_size: 512
+      num_layers: 2
+    dynamics:
+      _target_: struct_vrnn.model.lstm.MultiGaussianLSTM
+#      input_size: 212
+      input_size: 54
+      output_size: 30
+      hidden_size: 512
+      num_layers: 2

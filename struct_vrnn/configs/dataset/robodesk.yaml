@@ -1,0 +1,19 @@
+num_steps: 12
+camera_name: camera
+cache_mode: low_dim
+dataset_files:
+    - /svl/u/stian/robodesk_open_drawer/noise_0.1_256.hdf5
+    - /svl/u/stian/robodesk_open_drawer/noise_0.2_256.hdf5
+    - /svl/u/stian/robodesk_open_slide/noise_0.1_256.hdf5
+    - /svl/u/stian/robodesk_open_slide/noise_0.2_256.hdf5
+    - /svl/u/stian/robodesk_open_slide/noise_0.5_256.hdf5
+    - /svl/u/stian/robodesk_push_blue/noise_0.1_256.hdf5
+    - /svl/u/stian/robodesk_push_blue/noise_0.2_256.hdf5
+    - /svl/u/stian/robodesk_push_green/noise_0.1_256.hdf5
+    - /svl/u/stian/robodesk_push_green/noise_0.2_256.hdf5
+    - /svl/u/stian/robodesk_push_red/noise_0.1_256.hdf5
+    - /svl/u/stian/robodesk_push_red/noise_0.2_256.hdf5
+    - /svl/u/stian/robodesk_flat_block_off_table/noise_0.1_256.hdf5
+    - /svl/u/stian/robodesk_flat_block_off_table/noise_0.2_256.hdf5
+    - /svl/u/stian/robodesk_upright_block_off_table/noise_0.1_256.hdf5
+    - /svl/u/stian/robodesk_upright_block_off_table/noise_0.2_256.hdf5

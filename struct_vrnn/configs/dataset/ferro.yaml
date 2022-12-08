@@ -1,0 +1,12 @@
+_target_: struct_vrnn.datasets.hdf5_dataset.FixLenVideoDataset
+data_dir:
+  - /viscam/projects/perceptual-metrics/ff_data/ALL_data_empty_and_maze_11_16
+mpar:
+  img_sz:
+    - 64
+    - 64
+data_conf:
+  img_sz:
+    - 64
+    - 64
+  sel_len: 10
