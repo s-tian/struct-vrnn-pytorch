@@ -1,4 +1,9 @@
 *.idea
 *~
 *.DS_Store
-
+outputs/
+launch_files/
+data/
+__pycache__/
+tmp/
+vp2_models/

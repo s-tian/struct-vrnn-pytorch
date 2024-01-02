@@ -9,14 +9,7 @@ class MultiGaussianLSTM(nn.Module):
         super().__init__()
         self.hidden_size = hidden_size
         self.embed = nn.Linear(input_size, hidden_size)
-        self.mean = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size),
-            nn.LeakyReLU(0.2),
-            nn.Linear(hidden_size, hidden_size),
-            nn.LeakyReLU(0.2),
-            nn.Linear(hidden_size, output_size),
-            nn.LeakyReLU(0.2)
-        )
+        self.mean = nn.Linear(hidden_size, output_size)
         self.logvar = nn.Linear(hidden_size, output_size)
         self.layers_0 = nn.LSTM(
             input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers

@@ -68,7 +68,7 @@ class BaseVideoDataset(data.Dataset):
         else:
             self.n_worker = 1
         # todo debug:
-        self.n_worker = 4
+        self.n_worker = 8
 
     def get_data_loader(self, batch_size):
         print("len {} dataset {}".format(self.phase, len(self)))
@@ -175,7 +175,7 @@ class FixLenVideoDataset(BaseVideoDataset):
         }
 
     def apply_image_aug(self, x):
-        x = torch.Tensor(x)
+        x = torch.from_numpy(x)
         return self.transform(x).numpy()
 
     def process_data_dict(self, data_dict):

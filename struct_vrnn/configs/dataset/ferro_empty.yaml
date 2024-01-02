@@ -1,6 +1,6 @@
 _target_: struct_vrnn.datasets.hdf5_dataset.FixLenVideoDataset
 data_dir:
-  - /svl/u/stian/ALL_data_empty_and_maze_11_16
+  - /svl/u/stian/ferro_empty_only
 mpar:
   img_sz:
     - 64
@@ -9,4 +9,4 @@ data_conf:
   img_sz:
     - 64
     - 64
-  sel_len: 15
+  sel_len: 30

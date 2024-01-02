@@ -114,7 +114,7 @@ class CoordChannelLayer(nn.Module):
         input_dims = input.shape[:-3]
         final_shape = input_dims + (1, self.input_map_size, self.input_map_size)
         x_coords = self.x_coords.expand(final_shape)
-        y_coords = self.y_coords.expand(final_shape)
+        y_coords = self.y_coords[:, None].expand(final_shape)
         return torch.cat([input, x_coords, y_coords], dim=-3)
 
 
@@ -169,7 +169,7 @@ class KeypointDetector(nn.Module):
         keypoint_width = 2.0 * (self.sigma / self.image_encoder.output_map_size) ** 2
         # Compute marginals for each keypoint
         x_vec = torch.exp(-torch.square(self.x_coord_axis - x_coords[..., None, None]) / keypoint_width)
-        y_vec = torch.exp(-torch.square(self.y_coord_axis - y_coords[..., None])[..., None] / keypoint_width)
+        y_vec = torch.exp(-torch.square(self.y_coord_axis[..., None] - y_coords[..., None, None]) / keypoint_width)
         # Multiply marginals to get joint dist.
         gaussian_maps = x_vec * y_vec
         # Scale Gaussian maps based on intensity
@@ -185,3 +185,19 @@ class KeypointDetector(nn.Module):
         reconstructed_image = self.image_decoder(decoder_inputs) + first_frame
         # reconstructed_image = self.image_decoder(decoder_inputs)
         return reconstructed_image
+
+    def test_visualize_keypoints_to_gaussian_map(self):
+        keypoints = torch.zeros((1, self.num_keypoints, 3)).cuda()
+        keypoints[0, 0] = torch.tensor([0.5, 0.5, 1.0]).cuda()
+        keypoints[0, 1] = torch.tensor([-0.5, -0.5, 1.0]).cuda()
+        keypoints[0, 2] = torch.tensor([0, 0, 1.0]).cuda()
+        gmap = self.keypoints_to_gaussian_map(keypoints)
+        # get first three channels of gmap
+        gmap = gmap[0, :3]
+        # write it as an image to disk
+        gmap = gmap.permute(1, 2, 0)
+        gmap = gmap.detach().cpu().numpy()
+        gmap = (gmap * 255).astype(np.uint8)
+        import cv2
+        cv2.imwrite("gmap.png", gmap)
+        print(f"Writing debug keypoint visualization to gmap.png...")

@@ -13,3 +13,13 @@ def visualize_keypoints(keypoints, image_size):
         image[-y, x, :] = [int(intensities[i] * 255), 0, 0]
     return image
 
+
+def visualize_keypoint_sequence(keypoints, image_size):
+    # Visualize a sequence of keypoints on a blank image
+    # keypoints: (seq_len, num_keypoints, 3), normalized to [-1, 1]
+    # image_size: height and width of the image
+    seq_len = keypoints.shape[0]
+    image = np.zeros((seq_len, image_size, image_size, 3), dtype=np.uint8)
+    for t in range(seq_len):
+        image[t] = visualize_keypoints(keypoints[t], image_size)
+    return image

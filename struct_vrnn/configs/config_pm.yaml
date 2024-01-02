@@ -19,7 +19,7 @@ val_steps: 50
 train_epoch_length: 3000
 log_every: 30000
 log_images_every: 500
-num_videos_to_log: 4
+num_videos_to_log: 6
 device: cuda
 num_workers: 8
 
@@ -27,7 +27,7 @@ training_weights:
   reconstruction_loss: 10.0
   kld_loss: 0.001
   temporal_separation_loss: 0.0
-  coord_pred_loss: 10.0
+  coord_pred_loss: 1.0
   sparsity_loss: 0.0
 
 model:
@@ -37,7 +37,7 @@ model:
     _target_: struct_vrnn.model.keypoint_detector.KeypointDetector
     num_keypoints: 10
     #keypoint_sigma: 1.5
-    keypoint_sigma: 3
+    keypoint_sigma: 1
     encoder:
       _target_: struct_vrnn.model.keypoint_detector.ImageEncoder
       num_input_channels: 5

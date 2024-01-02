@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-from hydra.utils import instantiate
-
 
 def kl_divergence(mean1, logvar1, mean2, logvar2):
     kld = 0.5 * (
@@ -27,6 +25,7 @@ class Dynamics(nn.Module):
     def forward(self, keypoints, actions):
         dynamics_state, prior_state, posterior_state = None, None, None
         video_len = keypoints.shape[1]
+        orig_keypoints_shape = keypoints.shape
         # Flatten keypoints
         keypoints = keypoints.view(keypoints.shape[:2] + (-1,))
         keypoint_preds, klds = list(), list()
@@ -36,8 +35,14 @@ class Dynamics(nn.Module):
             (_, prior_mu, prior_logvar), prior_state = self.prior(k_t, prior_state)
             inp = torch.cat((k_t, actions[:, t - 1], z_t), dim=-1)
             (_, pred_mu, _), dynamics_state = self.dynamics(inp, dynamics_state)
-            # Apply tanh to make sure that the predicted keypoints are in -1, 1
-            pred_mu = torch.tanh(pred_mu)
+            # Reshape pred_mu to have the same shape as a single timestep of orig_keypoints_shape
+            pred_mu = pred_mu.view((orig_keypoints_shape[0],) + orig_keypoints_shape[2:])
+            # Use tanh on the first two dimensions of the keypoints to make sure that the predicted keypoints are in -1, 1
+            # Use sigmoid on the last dimension to make sure that the intensities are in 0, 1
+            pred_mu = torch.cat((torch.tanh(pred_mu[:, :, :2]), torch.sigmoid(pred_mu[:, :, 2:])), dim=-1)
+            # pred_mu = torch.tanh(pred_mu)
+            # reshape
+            pred_mu = pred_mu.view(orig_keypoints_shape[:1] + (-1,))
             # compute KL(posterior || prior).
             klds.append(kl_divergence(mu, logvar, prior_mu, prior_logvar))
             keypoint_preds.append(pred_mu)
@@ -49,6 +54,7 @@ class Dynamics(nn.Module):
         dynamics_state, prior_state, posterior_state = None, None, None
         num_actions = actions.shape[1]
         num_context = keypoints.shape[1]
+        orig_keypoints_shape = keypoints.shape
         # Flatten keypoints
         keypoints = keypoints.view(keypoints.shape[:2] + (-1,))
         keypoint_preds, klds = list(), list()
@@ -60,8 +66,17 @@ class Dynamics(nn.Module):
             (z_t, prior_mu, prior_logvar), prior_state = self.prior(k_t, prior_state)
             inp = torch.cat((k_t, actions[:, t - 1], z_t), dim=-1)
             (_, pred_mu, _), dynamics_state = self.dynamics(inp, dynamics_state)
+
+            # Reshape pred_mu to have the same shape as a single timestep of orig_keypoints_shape
+            pred_mu = pred_mu.view((orig_keypoints_shape[0],) + orig_keypoints_shape[2:])
+            # Use tanh on the first two dimensions of the keypoints to make sure that the predicted keypoints are in -1, 1
+            # Use sigmoid on the last dimension to make sure that the intensities are in 0, 1
+            pred_mu = torch.cat((torch.tanh(pred_mu[:, :, :2]), torch.sigmoid(pred_mu[:, :, 2:])), dim=-1)
+            # pred_mu = torch.tanh(pred_mu)
+            # reshape
+            pred_mu = pred_mu.view(orig_keypoints_shape[:1] + (-1,))
             # Apply tanh to make sure that the predicted keypoints are in -1, 1
-            pred_mu = torch.tanh(pred_mu)
+            # pred_mu = torch.tanh(pred_mu)
             # compute KL(posterior || prior).
             keypoint_preds.append(pred_mu)
         keypoint_preds = torch.stack(keypoint_preds, dim=1)

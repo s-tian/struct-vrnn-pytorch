@@ -37,7 +37,7 @@ class StructVRNN(nn.Module):
         self.dynamics = dynamics
         self.temporal_separation_loss_sigma = temporal_separation_loss_sigma
 
-    def forward(self, videos, actions):
+    def forward(self, videos, actions, return_keypoints=False):
         # Perform forward prediction.
         sequence_length = actions.shape[1]
         # Flatten video sequence into batch of images.
@@ -62,6 +62,8 @@ class StructVRNN(nn.Module):
         reconstructed_predictions = self.keypoint_detector.keypoints_to_image(
             keypoint_preds.view(-1, self.num_keypoints, 3), first_frame, first_frame_keypoints_rep)
         reconstructed_predictions = reconstructed_predictions.view(videos.shape[0], sequence_length, *videos.shape[2:])
+        if return_keypoints:
+            return reconstructed_predictions, keypoint_preds.detach().cpu()
         return reconstructed_predictions
 
     @property

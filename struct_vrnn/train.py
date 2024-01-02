@@ -9,7 +9,7 @@ from hydra.utils import instantiate
 from hydra.core.hydra_config import HydraConfig
 
 import wandb
-from struct_vrnn.viz_utils import visualize_keypoints
+from struct_vrnn.viz_utils import visualize_keypoints, visualize_keypoint_sequence
 
 
 def batch_to_device(batch, device):
@@ -39,23 +39,27 @@ def train_epoch(cfg, train_steps, model, optimizer, dataloader):
         losses["total_loss"] = loss
         wandb_log = losses
         if step % cfg.log_images_every == 0:
-            # Log reconstructed images.
-            gt_video = train_batch[0]
-            reconstructed_images = torch.cat(list(reconstructed_images[:, -1]), dim=2)
-            gt_video_horiz = torch.cat(list(gt_video[:, -1]), dim=2)
-            gt_video_firstframe_horiz = torch.cat(list(gt_video[:, 0]), dim=2)
-            keypoints = keypoints.cpu().detach().numpy()
-            print("Keypoints are ", keypoints)
-            keypoint_vis = [visualize_keypoints(keypoints[i, -1], gt_video.shape[-2]) for i in range(keypoints.shape[0])]
-            keypoint_vis = torch.cat(list(torch.from_numpy(np.stack(keypoint_vis, axis=0)).permute(0, 3, 1, 2).float().cuda()), dim=2) / 255.
-            reconstructed_images = torch.cat((gt_video_horiz, reconstructed_images, gt_video_firstframe_horiz, keypoint_vis), dim=-2)
-            reconstructed_images = torch.clamp(reconstructed_images, 0.0, 1.0)
-            wandb_log["reconstructed_images"] = wandb.Image(reconstructed_images.detach().cpu() * 255)
-            gt_and_pred_video = torch.cat([gt_video[:, 1:], reconstructed_preds], dim=-2)
-            gt_and_pred_video = torch.cat(list(gt_and_pred_video[:cfg.num_videos_to_log]), dim=-1)
-            # Clip to [0, 1] range.
-            gt_and_pred_video = torch.clamp(gt_and_pred_video, 0.0, 1.0)
-            wandb_log["gt_and_pred_video"] = wandb.Video(gt_and_pred_video.detach().cpu() * 255, fps=5)
+            with torch.no_grad():
+                # Log reconstructed images.
+                gt_video = train_batch[0]
+                reconstructed_images = torch.cat(list(reconstructed_images[:, -1]), dim=2)
+                gt_video_horiz = torch.cat(list(gt_video[:, -1]), dim=2)
+                gt_video_firstframe_horiz = torch.cat(list(gt_video[:, 0]), dim=2)
+                keypoints = keypoints.cpu().detach().numpy()
+                # print("Keypoints are ", keypoints)
+                keypoint_vis = [visualize_keypoints(keypoints[i, -1], gt_video.shape[-2]) for i in range(keypoints.shape[0])]
+                keypoint_vis = torch.cat(list(torch.from_numpy(np.stack(keypoint_vis, axis=0)).permute(0, 3, 1, 2).float().cuda()), dim=2) / 255.
+                reconstructed_images = torch.cat((gt_video_horiz, reconstructed_images, gt_video_firstframe_horiz, keypoint_vis), dim=-2)
+                reconstructed_images = torch.clamp(reconstructed_images, 0.0, 1.0)
+                wandb_log["reconstructed_images"] = wandb.Image(reconstructed_images.detach().cpu() * 255)
+                # visualize GT keypoint sequences
+                keypoint_video_vis = [visualize_keypoint_sequence(keypoints[i, 1:], gt_video.shape[-2]) for i in range(cfg.num_videos_to_log)]
+                keypoint_video_vis = torch.from_numpy(np.stack(keypoint_video_vis, axis=0)).permute(0, 1, 4, 2, 3).float().cuda() / 255.
+                gt_and_pred_video = torch.cat([gt_video[:, 1:], reconstructed_preds, keypoint_video_vis], dim=-2)
+                gt_and_pred_video = torch.cat(list(gt_and_pred_video[:cfg.num_videos_to_log]), dim=-1)
+                # Clip to [0, 1] range.
+                gt_and_pred_video = torch.clamp(gt_and_pred_video, 0.0, 1.0)
+                wandb_log["gt_and_pred_video"] = wandb.Video(gt_and_pred_video.detach().cpu() * 255, fps=5)
 
         wandb.log(wandb_log)
         loss.backward()
@@ -79,16 +83,21 @@ def val_epoch(cfg, model, dataloader):
     pbar = tqdm(dataloader)
     step = 0
     wandb_log = dict()
-    for train_batch in pbar:
-        if isinstance(train_batch, dict):
-            train_batch = train_batch["video"].float(), train_batch["actions"].float()
-        train_batch = batch_to_device(train_batch, cfg.device)
-        gt_video = train_batch[0]
-        train_batch = train_batch[0][:, :2], train_batch[1]
-        reconstructed_preds = model(*train_batch)
+    for val_batch in pbar:
+        if isinstance(val_batch, dict):
+            val_batch = val_batch["video"].float(), val_batch["actions"].float()
+        val_batch = batch_to_device(val_batch, cfg.device)
+        gt_video = val_batch[0]
+        val_batch = val_batch[0][:, :2], val_batch[1]
+        reconstructed_preds, keypoint_preds = model(*val_batch, return_keypoints=True)
         if step % cfg.log_images_every == 0:
             # Log reconstructed images.
-            gt_and_pred_video = torch.cat([gt_video[:, 1:], reconstructed_preds[:, :gt_video.shape[1]-1]], dim=-2)
+            pixel_mse_loss = torch.mean((gt_video[:, 1:] - reconstructed_preds[:, :gt_video.shape[1]-1])**2, dim=[1, 2, 3, 4])
+            wandb_log["val/pixel_mse_loss"] = pixel_mse_loss.mean()
+            keypoint_preds = keypoint_preds.cpu().detach().numpy()
+            keypoint_video_vis = [visualize_keypoint_sequence(keypoint_preds[i], gt_video.shape[-2]) for i in range(cfg.num_videos_to_log)]
+            keypoint_video_vis = torch.from_numpy(np.stack(keypoint_video_vis, axis=0)).permute(0, 1, 4, 2, 3).float().cuda() / 255.
+            gt_and_pred_video = torch.cat([gt_video[:, 1:], reconstructed_preds[:, :gt_video.shape[1]-1], keypoint_video_vis], dim=-2)
             gt_and_pred_video = torch.cat(list(gt_and_pred_video[:cfg.num_videos_to_log]), dim=-1)
             # Clip to [0, 1] range.
             gt_and_pred_video = torch.clamp(gt_and_pred_video, 0.0, 1.0)
@@ -104,6 +113,22 @@ def main(cfg):
     print("Logging to ", os.getcwd())
     model = instantiate(cfg.model)
     model = model.to(cfg.device)
+
+    optimizer = instantiate(cfg.optimizer, params=model.parameters())
+
+    # Resume from checkpoint if it exists.
+    if "checkpoint_path" in cfg and cfg.checkpoint_path is not None:
+        checkpoint = torch.load(cfg.checkpoint_path)
+        model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+        # optimizer.load_state_dict(checkpoint["optimizer_state_dict"], strict=False)
+        train_steps = checkpoint["step"]
+    else:
+        train_steps = 0
+
+    # debug
+    model.keypoint_detector.test_visualize_keypoints_to_gaussian_map()
+    # debug
+
 
     if cfg.data_type == "dataset":
         train_data, val_data = instantiate(cfg.dataset, split="train"), instantiate(cfg.dataset, split="val")
@@ -153,8 +178,6 @@ def main(cfg):
     wandb.config.slurm_job_id = os.getenv("SLURM_JOB_ID", 0)
     wandb.config.output_dir = os.getcwd()
 
-    optimizer = instantiate(cfg.optimizer, params=model.parameters())
-    train_steps = 0
     while train_steps < cfg.train_steps:
         train_epoch(cfg, train_steps, model=model, dataloader=train_loader, optimizer=optimizer)
         train_steps += min(len(train_loader), cfg.train_epoch_length)
