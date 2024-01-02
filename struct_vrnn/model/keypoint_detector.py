@@ -69,7 +69,7 @@ class ImageDecoder(nn.Module):
         self.layers = nn.ModuleList()
 
         # Layers that increase to initial number of filters
-        self.layers.append(nn.Conv2d(num_input_channels, initial_num_filters, kernel_size=1, padding=0))
+        self.layers.append(nn.Conv2d(num_input_channels, initial_num_filters, kernel_size=3, padding=1))
 
         # Upsampling blocks
         num_filters = initial_num_filters
@@ -88,7 +88,7 @@ class ImageDecoder(nn.Module):
                         self.layers.append(nn.BatchNorm2d(num_filters))
                     self.layers.append(nn.Conv2d(num_filters, num_filters, kernel_size=3, padding=1))
         # adjust channels of output image layer
-        self.layers.append(nn.Conv2d(num_filters, 3, kernel_size=1, padding=0))
+        self.layers.append(nn.Conv2d(num_filters, 3, kernel_size=3, padding=1))
         self.nonlinearity = nn.LeakyReLU(0.2)
 
     def forward(self, images):
@@ -127,7 +127,7 @@ class KeypointDetector(nn.Module):
         self.image_encoder = encoder
         self.encoder_coord_channel_layer = CoordChannelLayer(encoder.input_map_size)
         self.decoder_coord_channel_layer = CoordChannelLayer(encoder.output_map_size)
-        self.encoded_image_to_heatmaps = nn.Conv2d(self.image_encoder.output_num_filters, num_keypoints, kernel_size=1, padding=0)
+        self.encoded_image_to_heatmaps = nn.Conv2d(self.image_encoder.output_num_filters, num_keypoints, kernel_size=3, padding=1)
 
         # Create coordinate axes for heatmap space and register as buffers so they move to the correct devices
         x_coord_axis = torch.linspace(-1, 1, encoder.output_map_size)
